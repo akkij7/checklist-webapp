@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% block title %}Create Your Checklist | ChecklistPro{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="welcome-section text-center mb-5">
+            <h1 class="display-4">Welcome to ChecklistPro</h1>
+            <p class="lead">Create, organize, and share your checklists with ease.</p>
+        </div>
+        
+        <div class="card shadow">
+            <div class="card-header">
+                <h4 class="mb-0"><i class="bi bi-plus-circle"></i> Create a New Checklist</h4>
+            </div>
+            <div class="card-body">
+                <p class="card-text text-muted mb-4">Give your checklist a name and add the items you need to track.</p>
+                
+                <!-- Direct form with no JavaScript -->
+                <form action="{{ url_for('create_checklist') }}" method="post" id="createChecklistForm" name="createChecklistForm">
+                    <div class="mb-4">
+                        <label for="checklist_name" class="form-label">Checklist Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-lg" id="checklist_name" name="checklist_name" required 
+                               placeholder="e.g., Travel Packing, Meeting Agenda" autocomplete="off">
+                    </div>
+                    <div class="mb-4">
+                        <label for="checklist_items" class="form-label">Items</label>
+                        <textarea class="form-control" id="checklist_items" name="checklist_items" rows="8" 
+                                  placeholder="Enter one item per line, or separate items with commas.&#10;Example:&#10;Laptop&#10;Phone charger&#10;Notebook, Pens"></textarea>
+                        <div class="form-text">
+                            <i class="bi bi-info-circle"></i> Separate items with commas or new lines. We'll clean up the formatting for you.
+                        </div>
+                    </div>
+                    <div class="d-grid">
+                        <!-- IMPORTANT: Use type="submit" and formnovalidate to bypass any JavaScript validation -->
+                        <button type="submit" class="btn btn-primary btn-lg create-btn" id="createBtn" formnovalidate>
+                            <i class="bi bi-list-check"></i> Create Checklist
+                        </button>
+                    </div>
+                    <!-- Prevent JavaScript interference -->
+                    <noscript>
+                        <p class="text-danger mt-3">JavaScript is disabled. This form will still work, but you won't see loading indicators.</p>
+                    </noscript>
+                </form>
+                
+                <div id="formStatus" class="mt-3"></div>
+            </div>
+        </div>
+        
+        <div class="features-section mt-5">
+            <h3 class="text-center mb-4">Features</h3>
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <div class="feature-card">
+                        <i class="bi bi-share"></i>
+                        <h5>Shareable Links</h5>
+                        <p>Share your checklists with others using easy-to-remember URLs.</p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="feature-card">
+                        <i class="bi bi-check-all"></i>
+                        <h5>Track Progress</h5>
+                        <p>See your progress with a visual percentage bar as you complete items.</p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="feature-card">
+                        <i class="bi bi-arrow-down-up"></i>
+                        <h5>Drag & Drop</h5>
+                        <p>Rearrange your items in any order with simple drag-and-drop.</p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="feature-card">
+                        <i class="bi bi-phone"></i>
+                        <h5>Mobile Friendly</h5>
+                        <p>Access and update your checklists from any device.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block title %}Error | ChecklistPro{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow">
+            <div class="card-header bg-danger text-white">
+                <h4 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Error</h4>
+            </div>
+            <div class="card-body text-center">
+                <p class="card-text">
+                    {{ error }}
+                </p>
+                <a href="{{ url_for('index') }}" class="btn btn-primary mt-3">
+                    <i class="bi bi-house"></i> Return to Homepage
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

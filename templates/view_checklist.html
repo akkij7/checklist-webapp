@@ -1,0 +1,274 @@
+{% extends 'base.html' %}
+{% block title %}{{ checklist.name }} | ChecklistPro{% endblock %}
+
+{% block content %}
+<div class="checklist-container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="checklist-title">{{ checklist.name }}</h1>
+        <div>
+            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteChecklistModal">
+                <i class="bi bi-trash"></i> Delete List
+            </button>
+        </div>
+    </div>
+
+    <!-- Share Link -->
+    <div class="share-box mb-4">
+        <h5><i class="bi bi-share"></i> Share this Checklist</h5>
+        <div class="input-group">
+            <input type="text" class="form-control" id="shareLink" value="{{ request.host_url }}list/{{ checklist.slug }}" readonly>
+            <button class="btn btn-primary" type="button" id="copyLinkBtn" title="Copy to clipboard">
+                <i class="bi bi-clipboard"></i> Copy
+            </button>
+        </div>
+        <div id="copyMessage" class="form-text text-success" style="display: none;">
+            <i class="bi bi-check-circle"></i> Link copied to clipboard!
+        </div>
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="progress-section mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="mb-0">Progress</h5>
+            <span class="badge progress-badge">{{ progress }}% Complete</span>
+        </div>
+        <div class="progress" style="height: 20px;">
+            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: {{ progress }}%;" aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100">
+                <span class="progress-text">{{ progress }}%</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Checklist Items -->
+    <div class="checklist-items mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0"><i class="bi bi-list-check"></i> Items</h5>
+            <div class="item-actions">
+                {% if items %}
+                <span class="drag-info"><i class="bi bi-info-circle"></i> Drag items to reorder</span>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if items %}
+            <ul class="list-group checklist-list" id="checklist-items">
+                {% for item in items %}
+                    <li class="list-group-item checklist-item {% if item.is_completed %}completed{% endif %}" data-id="{{ item.id }}">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="item-content">
+                                <div class="form-check">
+                                    <input class="form-check-input item-checkbox" type="checkbox" id="item-{{ item.id }}" 
+                                           data-slug="{{ checklist.slug }}" data-item-id="{{ item.id }}"
+                                           {% if item.is_completed %}checked{% endif %}>
+                                    <label class="form-check-label item-text" for="item-{{ item.id }}">
+                                        {{ item.text }}
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="item-actions">
+                                <span class="drag-handle" title="Drag to reorder"><i class="bi bi-grip-vertical"></i></span>
+                                <form action="{{ url_for('delete_item', slug=checklist.slug, item_id=item.id) }}" method="post" class="d-inline delete-form">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger delete-btn" title="Delete item">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <div class="empty-list-message">
+                <i class="bi bi-exclamation-circle"></i>
+                <p>No items yet. Add some below!</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Add Items Form -->
+    <div class="add-items-section">
+        <h5 class="mb-3"><i class="bi bi-plus-lg"></i> Add New Items</h5>
+        <form action="{{ url_for('add_item', slug=checklist.slug) }}" method="post">
+            <div class="mb-3">
+                <textarea class="form-control" name="new_items" rows="3" placeholder="Enter new items, separated by commas or new lines.&#10;Example: Laptop, Phone charger, Notebook"></textarea>
+                <div class="form-text">
+                    <i class="bi bi-info-circle"></i> Separate items with commas or new lines. Periods at the end will be removed.
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary add-btn">
+                <i class="bi bi-plus-lg"></i> Add Items
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Checklist Confirmation Modal -->
+<div class="modal fade" id="deleteChecklistModal" tabindex="-1" aria-labelledby="deleteChecklistModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteChecklistModalLabel">
+                    <i class="bi bi-exclamation-triangle-fill text-danger"></i> Confirm Deletion
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to permanently delete the checklist "<strong>{{ checklist.name }}</strong>" and all its items?</p>
+                <p class="text-danger"><strong>This action cannot be undone.</strong></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form action="{{ url_for('delete_checklist', slug=checklist.slug) }}" method="post" class="d-inline">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash"></i> Delete Checklist
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Copy link to clipboard
+    document.getElementById('copyLinkBtn').addEventListener('click', function() {
+        var copyText = document.getElementById('shareLink');
+        copyText.select();
+        copyText.setSelectionRange(0, 99999);
+        
+        try {
+            navigator.clipboard.writeText(copyText.value)
+                .then(() => {
+                    // Show success message
+                    var msg = document.getElementById('copyMessage');
+                    msg.style.display = 'block';
+                    setTimeout(function() {
+                        msg.style.display = 'none';
+                    }, 3000);
+                });
+        } catch (err) {
+            // Fallback for older browsers
+            document.execCommand('copy');
+            var msg = document.getElementById('copyMessage');
+            msg.style.display = 'block';
+            setTimeout(function() {
+                msg.style.display = 'none';
+            }, 3000);
+        }
+    });
+    
+    // Handle checkbox toggle with AJAX
+    document.addEventListener('DOMContentLoaded', function() {
+        const checkboxes = document.querySelectorAll('.item-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const itemId = this.getAttribute('data-item-id');
+                const slug = this.getAttribute('data-slug');
+                const isChecked = this.checked;
+                const listItem = this.closest('.checklist-item');
+                
+                // Visual feedback immediately
+                if (isChecked) {
+                    listItem.classList.add('completed');
+                    listItem.classList.add('pulse-animation');
+                    setTimeout(() => {
+                        listItem.classList.remove('pulse-animation');
+                    }, 500);
+                } else {
+                    listItem.classList.remove('completed');
+                }
+                
+                // Send AJAX request to update status
+                fetch(`/list/${slug}/toggle/${itemId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        // If the server returns an error, revert the checkbox
+                        this.checked = !isChecked;
+                        if (isChecked) {
+                            listItem.classList.remove('completed');
+                        } else {
+                            listItem.classList.add('completed');
+                        }
+                        console.error('Error updating item status');
+                    } else {
+                        // Update progress bar after successful toggle
+                        return response.json();
+                    }
+                })
+                .then(data => {
+                    if (data && data.progress !== undefined) {
+                        // Update progress bar
+                        const progressBar = document.querySelector('.progress-bar');
+                        const progressBadge = document.querySelector('.progress-badge');
+                        const progressText = document.querySelector('.progress-text');
+                        
+                        if (progressBar && progressBadge && progressText) {
+                            progressBar.style.width = `${data.progress}%`;
+                            progressBar.setAttribute('aria-valuenow', data.progress);
+                            progressBadge.textContent = `${data.progress}% Complete`;
+                            progressText.textContent = `${data.progress}%`;
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    // Revert the checkbox state on error
+                    this.checked = !isChecked;
+                    if (isChecked) {
+                        listItem.classList.remove('completed');
+                    } else {
+                        listItem.classList.add('completed');
+                    }
+                });
+            });
+        });
+    });
+    
+    // Initialize drag and drop functionality for checklist items
+    document.addEventListener('DOMContentLoaded', function() {
+        var el = document.getElementById('checklist-items');
+        if (el) {
+            var sortable = new Sortable(el, {
+                animation: 150,
+                handle: '.drag-handle',
+                ghostClass: 'sortable-ghost',
+                chosenClass: 'sortable-chosen',
+                dragClass: 'sortable-drag',
+                onEnd: function(evt) {
+                    // Get the new order of items
+                    var itemOrder = Array.from(el.children).map(function(item) {
+                        return item.getAttribute('data-id');
+                    });
+                    
+                    // Send to server to update the order
+                    fetch('{{ url_for("reorder_items", slug=checklist.slug) }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            items: itemOrder
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status !== 'success') {
+                            console.error('Error updating item order:', data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                    });
+                }
+            });
+        }
+    });
+</script>
+{% endblock %} 
