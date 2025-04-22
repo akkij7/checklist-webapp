@@ -3,12 +3,14 @@ services:
     name: checklist-app
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app
+    startCommand: gunicorn --preload app:app
     envVars:
       - key: PYTHON_VERSION
         value: 3.9.7
       - key: SECRET_KEY
         generateValue: true
+      - key: RENDER
+        value: true
     disk:
       name: data
       mountPath: /data

@@ -22,7 +22,13 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 DATABASE_PATH = os.path.join(BASE_DIR, 'checklist.db')
 # For Render deployment
 if os.environ.get('RENDER'):
-    DATABASE_PATH = os.path.join('/data', 'checklist.db')
+    DATA_DIR = '/data'
+    # Ensure the data directory exists with proper permissions
+    os.makedirs(DATA_DIR, exist_ok=True)
+    # Make the directory writable
+    os.chmod(DATA_DIR, 0o777)
+    DATABASE_PATH = os.path.join(DATA_DIR, 'checklist.db')
+    print(f"Using database at {DATABASE_PATH}")
 
 app = Flask(__name__)
 # Use environment variable for SECRET_KEY in production
@@ -42,63 +48,74 @@ from models import Checklist, ChecklistItem
 # --- Add function to check and create tables ---
 def ensure_tables_exist(app, db):
     """Ensure all tables defined in the models exist in the database."""
-    with app.app_context():
-        inspector = inspect(db.engine)
-        tables = inspector.get_table_names()
-        
-        print(f"Current tables in database: {tables}")
-        
-        # Try using SQLAlchemy's built-in methods first
-        try:
-            # Always recreate tables for this version
-            print("Recreating database tables to ensure schema compatibility...")
+    try:
+        with app.app_context():
+            print(f"Ensuring tables exist in database at {DATABASE_PATH}")
+            inspector = inspect(db.engine)
+            tables = inspector.get_table_names()
             
-            # Safely drop tables if they exist
-            db.drop_all()
+            print(f"Current tables in database: {tables}")
             
-            # Create tables for all models
-            db.create_all()
-            print("Database tables created successfully!")
-        except Exception as e:
-            print(f"Error using SQLAlchemy to create tables: {e}")
-            print("Attempting to create tables with raw SQL...")
-            
-            # Fallback to raw SQL
+            # Try using SQLAlchemy's built-in methods first
             try:
-                with db.engine.connect() as conn:
-                    # Drop tables if they exist
-                    conn.execute(db.text("DROP TABLE IF EXISTS checklist_item"))
-                    conn.execute(db.text("DROP TABLE IF EXISTS checklist"))
-                    conn.commit()
-                    
-                    # Create tables
-                    conn.execute(db.text("""
-                    CREATE TABLE checklist (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        name VARCHAR(150) NOT NULL,
-                        slug VARCHAR(50) NOT NULL UNIQUE,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                    )
-                    """))
-                    
-                    conn.execute(db.text("""
-                    CREATE TABLE checklist_item (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        text VARCHAR(300) NOT NULL,
-                        is_completed BOOLEAN NOT NULL DEFAULT 0,
-                        position INTEGER NOT NULL DEFAULT 0,
-                        checklist_id INTEGER NOT NULL,
-                        FOREIGN KEY (checklist_id) REFERENCES checklist (id) ON DELETE CASCADE
-                    )
-                    """))
-                    conn.commit()
-                    print("Tables created successfully with raw SQL!")
-            except Exception as sql_error:
-                print(f"Error creating tables with raw SQL: {sql_error}")
-                print("WARNING: Application may not function correctly without database tables!")
+                # Always recreate tables for this version
+                print("Recreating database tables to ensure schema compatibility...")
+                
+                # Safely drop tables if they exist
+                db.drop_all()
+                
+                # Create tables for all models
+                db.create_all()
+                print("Database tables created successfully!")
+            except Exception as e:
+                print(f"Error using SQLAlchemy to create tables: {e}")
+                print("Attempting to create tables with raw SQL...")
+                
+                # Fallback to raw SQL
+                try:
+                    with db.engine.connect() as conn:
+                        # Drop tables if they exist
+                        conn.execute(db.text("DROP TABLE IF EXISTS checklist_item"))
+                        conn.execute(db.text("DROP TABLE IF EXISTS checklist"))
+                        conn.commit()
+                        
+                        # Create tables
+                        conn.execute(db.text("""
+                        CREATE TABLE checklist (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            name VARCHAR(150) NOT NULL,
+                            slug VARCHAR(50) NOT NULL UNIQUE,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        )
+                        """))
+                        
+                        conn.execute(db.text("""
+                        CREATE TABLE checklist_item (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            text VARCHAR(300) NOT NULL,
+                            is_completed BOOLEAN NOT NULL DEFAULT 0,
+                            position INTEGER NOT NULL DEFAULT 0,
+                            checklist_id INTEGER NOT NULL,
+                            FOREIGN KEY (checklist_id) REFERENCES checklist (id) ON DELETE CASCADE
+                        )
+                        """))
+                        conn.commit()
+                        print("Tables created successfully with raw SQL!")
+                except Exception as sql_error:
+                    print(f"Error creating tables with raw SQL: {sql_error}")
+                    print("WARNING: Application may not function correctly without database tables!")
+    except Exception as e:
+        print(f"Unexpected error in ensure_tables_exist: {e}")
+        traceback.print_exc()
 
-# --- Ensure database tables exist ---
-ensure_tables_exist(app, db)
+# --- Don't initialize database at import time ---
+# ensure_tables_exist(app, db)  # <-- REMOVED
+
+# For production - initialize DB before first request
+@app.before_first_request
+def initialize_database():
+    print("Initializing database before first request")
+    ensure_tables_exist(app, db)
 
 @app.context_processor
 def inject_now():
@@ -494,12 +511,6 @@ def generate_unique_slug(name, db_session):
 # Example: flask shell -> from app import db -> db.create_all()
 
 if __name__ == '__main__':
-    # --- Remove old DB creation logic --- 
-    # if not os.path.exists(DATABASE_PATH):
-    #     with app.app_context(): 
-    #         print("Creating database tables...")
-    #         db.create_all()
-    #         print("Database created!")
-    # --- End Removal --- 
-
+    # For local development, initialize the database here
+    ensure_tables_exist(app, db)
     app.run(debug=True) 
